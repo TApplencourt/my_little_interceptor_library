@@ -4,7 +4,7 @@
 #libtracer export A and B
 
 # `program_dlopening` will try to load A,B and A1
-@test "Test programC with liba.so" {
+@test "Test dlopeneing liba.so" {
   run ./program_dlopening ./liba.so
   [ "$status" -eq 0 ]
 
@@ -20,7 +20,7 @@
   [ "${output}" = "${expected_output}" ]
 }
 
-@test "Test programC with libtracer_dlopened.so (cannot export A1)" {
+@test "Test dlopening libtracer_dlopened.so (cannot export A1)" {
   # Run programC with the library that does NOT have a patchelf dependency.
   # This forces the tracer to use its manual dlopen() fallback mechanism.
   # Hence we cannpt export D1
@@ -44,7 +44,7 @@
   [ "${output}" = "${expected_output}" ]
 }
 
-@test "Test programC with libtracer_linked.so (can export A1)" {
+@test "Test dlopening libtracer_linked.so (can export A1)" {
   # Run programC with the library that HAS been patched with a dependency on liba.so.
   # This allows the tracer's dlsym(RTLD_NEXT, ...) call to succeed.
   LD_LIBRARY_PATH=. run ./program_dlopening ./libtracer_linked.so
@@ -67,7 +67,7 @@
   [ "${output}" = "${expected_output}" ]
 }
 
-@test "Race condition, we dlopen once" {
+@test "Verify libtracer dlopen only once" {
   gcc -o program_dlopening_omp -fopenmp main.c -ldl
   run ./program_dlopening_omp ./libtracer_dlopened.so
   [ $(echo "$output" | grep -c "\[libTracer] dlopen succeeded") -eq 1 ]
@@ -75,7 +75,7 @@
 
 # Program linked will try to load A and A1
 #
-@test "program_linked directly (Standard execution)" {
+@test "Test linked with liba.so" {
   run ./program_linked
   [ "$status" -eq 0 ]
 
@@ -89,7 +89,7 @@
   [ "${output}" = "${expected_output}" ]
 }
 
-@test "program_linked (Intersepted)" {
+@test "Test linked with liba.so (LD_PRELOAD dlopen tracer)" {
   LD_PRELOAD=./libtracer_dlopened.so run ./program_linked
   [ "$status" -eq 0 ]
 
@@ -104,5 +104,3 @@
 
   [ "${output}" = "${expected_output}" ]
 }
-
-
