@@ -15,12 +15,12 @@ static const char *get_library_name() {
   if (value != NULL) {
     return value;
   } else {
-    return "./liba.so";
+    return "liba.so";
   }
 }
 
 static void load_manual_liba(void) {
-  manual_liba_handle = dlopen(get_library_name(), RTLD_LAZY | RTLD_GLOBAL);
+  manual_liba_handle = dlopen(get_library_name(), RTLD_LAZY | RTLD_LOCAL);
   if (!manual_liba_handle) {
     fprintf(stderr, "  [libTracer] dlopen failed: %s\n", dlerror());
   } else {
@@ -28,7 +28,9 @@ static void load_manual_liba(void) {
   }
 }
 
-static void resolve_and_run(const char *func_name, void *current_wrapper_addr) {
+static void resolve(const char *func_name, void *current_wrapper_addr,
+                    func_t *cache_ptr) {
+
   printf("  [libTracer] Intercepted %s\n", func_name);
 
   // 1. Try RTLD_NEXT (Works if patchelf worked)
@@ -42,19 +44,21 @@ static void resolve_and_run(const char *func_name, void *current_wrapper_addr) {
     }
   }
 
+  // 3.  Abort safely instead of stack overflowing
   if ((void *)next_func == current_wrapper_addr) {
     printf("  [libTracer] FATAL: Infinite recursion detected on symbol '%s'. "
            "Don't trace the tracer.\n",
            func_name);
-    exit(1); // Abort safely instead of stack overflowing
+    exit(1);
   }
 
-  // 3. Call
+  // 4. Store
   if (next_func) {
-    next_func();
+    *cache_ptr = next_func;
   } else {
-    printf("  [libTracer] Symbol '%s' not found in intercepted lib\n",
+    printf("  [libTracer] FATAL: Symbol '%s' not found in intercepted lib\n",
            func_name);
+    exit(1);
   }
 }
 
@@ -65,8 +69,15 @@ __attribute__((destructor)) static void cleanup(void) {
   }
 }
 
-void A(void) { resolve_and_run("A", (void *)A); }
-// No A1, A1 is not exported
-void A2(void) { resolve_and_run("A2", (void *)A2); }
+#define DEFINE_WRAPPER(NAME)                                                   \
+  void NAME(void) {                                                            \
+    static func_t cached = NULL;                                               \
+    if (!cached)                                                               \
+      resolve(#NAME, (void *)NAME, &cached);                                   \
+    cached();                                                                  \
+  }
 
-void B(void) { resolve_and_run("B", (void *)B); }
+DEFINE_WRAPPER(A)
+DEFINE_WRAPPER(A2)
+DEFINE_WRAPPER(B)
+// No A1, A1 is not exported

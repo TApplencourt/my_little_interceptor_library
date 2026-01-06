@@ -4,7 +4,6 @@
 
 typedef void (*simple_func)(void);
 
-extern void A(void);
 extern void A1(void);
 extern void A2(void);
 

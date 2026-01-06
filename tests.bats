@@ -14,8 +14,7 @@
   [ProgramC] Calling A2
   [libA] Executing A2: Calling A
   [libA] Executing A
-  [libA] Executing A2: Exiting
-  [ProgramC] Error: ./liba.so: undefined symbol: B"
+  [libA] Executing A2: Exiting"
 
   [ "${output}" = "${expected_output}" ]
 }
@@ -24,7 +23,7 @@
   # Run programC with the library that does NOT have a patchelf dependency.
   # This forces the tracer to use its manual dlopen() fallback mechanism.
   # Hence we cannpt export D1
-  run ./program_dlopening ./libtracer_dlopened.so
+  LD_LIBRARY_PATH=. run ./program_dlopening ./libtracer_dlopened.so
 
   [ "$status" -eq 0 ]
 
@@ -36,10 +35,7 @@
   [libA] Executing A2: Calling A
   [libTracer] Intercepted A
   [libA] Executing A
-  [libA] Executing A2: Exiting
-  [ProgramC] Calling B
-  [libTracer] Intercepted B
-  [libTracer] Symbol 'B' not found in intercepted lib"
+  [libA] Executing A2: Exiting"
 
   [ "${output}" = "${expected_output}" ]
 }
@@ -58,18 +54,14 @@
   [libA] Executing A2: Calling A
   [libTracer] Intercepted A
   [libA] Executing A
-  [libA] Executing A2: Exiting
-  [ProgramC] Calling B
-  [libTracer] Intercepted B
-  [libTracer] dlopen succeeded
-  [libTracer] Symbol 'B' not found in intercepted lib"
-  
+  [libA] Executing A2: Exiting"
+
   [ "${output}" = "${expected_output}" ]
 }
 
 @test "Verify libtracer dlopen only once" {
   gcc -o program_dlopening_omp -fopenmp main.c -ldl
-  run ./program_dlopening_omp ./libtracer_dlopened.so
+  LD_LIBRARY_PATH=. run ./program_dlopening_omp ./libtracer_dlopened.so
   [ $(echo "$output" | grep -c "\[libTracer] dlopen succeeded") -eq 1 ]
 }
 
@@ -84,7 +76,7 @@
   [ProgramC] Calling A2
   [libA] Executing A2: Calling A
   [libA] Executing A
-  [libA] Executing A2: Exiting" 
+  [libA] Executing A2: Exiting"
 
   [ "${output}" = "${expected_output}" ]
 }
@@ -117,4 +109,9 @@
   [libTracer] FATAL: Infinite recursion detected on symbol 'A2'. Don't trace the tracer."
 
   [ "${output}" = "${expected_output}" ]
+}
+
+@test "Avoid leaking symbols" {
+  gcc -o main_check_symbol_leak main_check_symbol_leak.c -ldl
+  LD_LIBRARY_PATH=. ./main_check_symbol_leak libtracer_dlopened.so
 }

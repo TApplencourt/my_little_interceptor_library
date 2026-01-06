@@ -1,6 +1,10 @@
 #include <stdio.h>
 
-void A(void) { printf("  [libA] Executing A\n"); }
+void _secret_A(void) {};
+void A(void) {
+  _secret_A();
+  printf("  [libA] Executing A\n");
+}
 
 void A1(void) { printf("  [libA] Executing A1\n"); }
 
