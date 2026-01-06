@@ -31,10 +31,10 @@ int main(int argc, char *argv[]) {
   }
 
 #ifdef _OPENMP
-    #pragma omp parallel
-    {
-        call_symbol(handle, "A");
-    }
+#pragma omp parallel
+  {
+    call_symbol(handle, "A");
+  }
 #else
   call_symbol(handle, "A1");
   call_symbol(handle, "A2");

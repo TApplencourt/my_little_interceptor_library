@@ -10,9 +10,17 @@ typedef void (*func_t)(void);
 static void *manual_liba_handle = NULL;
 static pthread_once_t manual_liba_once = PTHREAD_ONCE_INIT;
 
-/* One-time initialization routine */
+static const char *get_library_name() {
+  const char *value = getenv("LIB_TO_TRACE");
+  if (value != NULL) {
+    return value;
+  } else {
+    return "./liba.so";
+  }
+}
+
 static void load_manual_liba(void) {
-  manual_liba_handle = dlopen("./liba.so", RTLD_LAZY | RTLD_GLOBAL);
+  manual_liba_handle = dlopen(get_library_name(), RTLD_LAZY | RTLD_GLOBAL);
   if (!manual_liba_handle) {
     fprintf(stderr, "  [libTracer] dlopen failed: %s\n", dlerror());
   } else {
@@ -20,7 +28,7 @@ static void load_manual_liba(void) {
   }
 }
 
-static void resolve_and_run(const char *func_name) {
+static void resolve_and_run(const char *func_name, void *current_wrapper_addr) {
   printf("  [libTracer] Intercepted %s\n", func_name);
 
   // 1. Try RTLD_NEXT (Works if patchelf worked)
@@ -33,6 +41,14 @@ static void resolve_and_run(const char *func_name) {
       next_func = (func_t)dlsym(manual_liba_handle, func_name);
     }
   }
+
+  if ((void *)next_func == current_wrapper_addr) {
+    printf("  [libTracer] FATAL: Infinite recursion detected on symbol '%s'. "
+           "Don't trace the tracer.\n",
+           func_name);
+    exit(1); // Abort safely instead of stack overflowing
+  }
+
   // 3. Call
   if (next_func) {
     next_func();
@@ -49,8 +65,8 @@ __attribute__((destructor)) static void cleanup(void) {
   }
 }
 
-void A(void) { resolve_and_run("A"); }
+void A(void) { resolve_and_run("A", (void *)A); }
 // No A1, A1 is not exported
-void A2(void) { resolve_and_run("A2"); }
+void A2(void) { resolve_and_run("A2", (void *)A2); }
 
-void B(void) { resolve_and_run("B"); }
+void B(void) { resolve_and_run("B", (void *)B); }

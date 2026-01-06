@@ -104,3 +104,17 @@
 
   [ "${output}" = "${expected_output}" ]
 }
+
+@test "Avoid Infinity Recursing in case of missuse (Tracing the tracer)" {
+  LIB_TO_TRACE=./libtracer_dlopened.so run ./program_dlopening ./libtracer_dlopened.so
+  [ "$status" -eq 1 ]
+
+  expected_output="Loading: ./libtracer_dlopened.so
+  [ProgramC] Error: ./libtracer_dlopened.so: undefined symbol: A1
+  [ProgramC] Calling A2
+  [libTracer] Intercepted A2
+  [libTracer] dlopen succeeded
+  [libTracer] FATAL: Infinite recursion detected on symbol 'A2'. Don't trace the tracer."
+
+  [ "${output}" = "${expected_output}" ]
+}
