@@ -22,14 +22,10 @@ static const char *get_library_name() {
 static void load_manual_liba(void) {
 
   const char *libname = get_library_name();
-  if (dlopen(get_library_name(), RTLD_NOLOAD | RTLD_LAZY)) {
-    printf("  [libTracer] %s is already loaded\n", libname);
-    return;
-  }
 
-  manual_liba_handle = dlopen(get_library_name(), RTLD_LAZY | RTLD_LOCAL);
+  manual_liba_handle = dlopen(libname, RTLD_LAZY | RTLD_LOCAL);
   if (!manual_liba_handle) {
-    fprintf(stderr, "  [libTracer] dlopen failed: %s\n", dlerror());
+    printf("  [libTracer] dlopen failed: %s\n", dlerror());
   } else {
     printf("  [libTracer] dlopen of %s succeeded\n", libname);
   }
@@ -49,11 +45,14 @@ static void resolve(const char *func_name, void *current_wrapper_addr,
   }
 
   // 3.  Abort safely instead of stack overflowing
-  if ((void *)next_func == current_wrapper_addr) {
-    printf("  [libTracer] FATAL: Infinite recursion detected on symbol '%s'. "
-           "Don't trace the tracer.\n",
-           func_name);
-    exit(1);
+  Dl_info my_info, next_info;
+  if (dladdr((void*)resolve, &my_info) && dladdr((void*)next_func, &next_info)) {
+      if (my_info.dli_fbase == next_info.dli_fbase) {
+        printf("  [libTracer] FATAL: Infinite recursion detected on symbol '%s'. "
+               "Resolved to address %p which is inside the Tracer (%s)\n",
+               func_name, (void*)next_func, my_info.dli_fname);
+        exit(1);
+      }
   }
 
   // 4. Store
