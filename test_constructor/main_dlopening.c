@@ -7,11 +7,11 @@ typedef void (*simple_func)(void);
 void call_symbol(void *handle, const char *name) {
   simple_func func = (simple_func)dlsym(handle, name);
   if (func != NULL) {
-    printf("  [ProgramC] Calling %s\n", name);
+    printf("  [Main] Calling %s\n", name);
     func();
   } else {
     char *error = dlerror();
-    printf("  [ProgramC] Error: %s\n", error);
+    printf("  [Main] Error: %s\n", error);
   }
 }
 
@@ -30,15 +30,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-#ifdef _OPENMP
-#pragma omp parallel
-  {
-    call_symbol(handle, "A");
-  }
-#else
-  call_symbol(handle, "A1");
-  call_symbol(handle, "A2");
-#endif
+  call_symbol(handle, "A");
 
   dlclose(handle);
   return 0;
