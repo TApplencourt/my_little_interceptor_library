@@ -27,6 +27,25 @@ setup_file() {
   [libA] Executing A"
 }
 
+@test "Main dlopening | Tracer dlopening | LD_PRELOAD" {
+  make main_dlopening
+  LD_PRELOAD=../libtracer_dlopened.so run ./main_dlopening ../libtracer_dlopened.so
+
+  assert_output "  [libA] ctor
+  [libTracer] Intercepted A
+  [libTracer] Finding Symbol A
+  [libA] Executing A
+  [libTracer] dlopen of liba.so succeeded
+Loading: ../libtracer_dlopened.so
+  [Main] Calling A
+  [libTracer] Intercepted A
+  [libA] Executing A
+  [libA] dtor
+  [libTracer] Intercepted A
+  [libA] Executing A"
+}
+
+
 @test "Main dlopening | Tracer linked" {
   make main_dlopening
   TRACED_LIB=x run ./main_dlopening ../libtracer_linked.so

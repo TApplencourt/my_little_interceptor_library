@@ -39,9 +39,25 @@ static void resolve(const char *func_name, void *current_wrapper_addr,
   // 1. Try RTLD_NEXT (Works if patchelf worked)
   func_t next_func = (func_t)dlsym(RTLD_NEXT, func_name);
 
-  // 2. Fallback: If RTLD_NEXT failed and we have a manual handle, look there
-  if (!next_func && manual_liba_handle) {
-    next_func = (func_t)dlsym(manual_liba_handle, func_name);
+  // 2. Fallback: Check the manual handle
+  if (!next_func) {
+    // If the handle is NULL, we might be inside the recursion gap (inside the
+    // dlopen constructor). We try to grab the handle using RTLD_NOLOAD.
+    if (!manual_liba_handle) {
+      const char *libname = get_library_name();
+      // RTLD_NOLOAD: Get handle if it is already resident, but don't load it if
+      // not. This works even if dlopen hasn't returned to the caller yet!
+      void *temp_handle = dlopen(libname, RTLD_LAZY | RTLD_NOLOAD);
+      if (temp_handle) {
+        next_func = (func_t)dlsym(temp_handle, func_name);
+        // Note: We don't save temp_handle to manual_liba_handle here to avoid
+        // race conditions with the main thread logic, we just use it for this
+        // resolution.
+        dlclose(temp_handle); // decrement refcount incremented by NOLOAD
+      }
+    } else {
+      next_func = (func_t)dlsym(manual_liba_handle, func_name);
+    }
   }
 
   // 3.  Abort safely instead of stack overflowing
