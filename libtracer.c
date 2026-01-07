@@ -46,13 +46,13 @@ static void resolve(const char *func_name, void *current_wrapper_addr,
 
   // 3.  Abort safely instead of stack overflowing
   Dl_info my_info, next_info;
-  if (dladdr((void*)resolve, &my_info) && dladdr((void*)next_func, &next_info)) {
-      if (my_info.dli_fbase == next_info.dli_fbase) {
-        printf("  [libTracer] FATAL: Infinite recursion detected on symbol '%s'. "
-               "Resolved to address %p which is inside the Tracer (%s)\n",
-               func_name, (void*)next_func, my_info.dli_fname);
-        exit(1);
-      }
+  if (dladdr((void *)resolve, &my_info) &&
+      dladdr((void *)next_func, &next_info)) {
+    if (my_info.dli_fbase == next_info.dli_fbase) {
+      printf("  [libTracer] FATAL: Symbol '%s' resolved inside the Tracer\n",
+             func_name);
+      exit(1);
+    }
   }
 
   // 4. Store
