@@ -1,5 +1,6 @@
 CC=gcc
 CFLAGS=-fPIC -Wall
+
 PATCHELF=patchelf
 ALL=liba.so libtracer_linked.so libtracer_dlopened.so 
 

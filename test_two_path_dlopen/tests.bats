@@ -16,11 +16,14 @@ setup_file() {
   run ./main_dlopening ../libtracer_dlopened.so
 
   assert_output "Loading: ../libtracer_dlopened.so
-  [libTracer] dlopen of liba.so succeeded
+  [libTracer] Initializing tracer (via ctor)
+  [libTracer] Resolving symbol 'A'
+  [libTracer] dlopen(RTLD_LOCAL) of 'liba.so' succeeded
+  [libTracer] Symbol 'A' found via dlsym
+  [libTracer] Resolving symbol 'B'
   [Main] Calling A
   [libTracer] Intercepted A
-  [libTracer] Finding Symbol A
-  [libA] Executing A"  
+  [libA] Executing A"
 }
 
 @test "Main dlopening | Tracer linked" {
@@ -28,9 +31,12 @@ setup_file() {
   run ./main_dlopening ../libtracer_linked.so
 
   assert_output "Loading: ../libtracer_linked.so
-  [libTracer] dlopen of liba.so succeeded
+  [libTracer] Initializing tracer (via ctor)
+  [libTracer] Resolving symbol 'A'
+  [libTracer] Symbol 'A' found via RTLD_NEXT
+  [libTracer] Resolving symbol 'B'
+  [libTracer] dlopen(RTLD_LOCAL) of 'liba.so' succeeded
   [Main] Calling A
   [libTracer] Intercepted A
-  [libTracer] Finding Symbol A
   [libA] Executing A"
 }

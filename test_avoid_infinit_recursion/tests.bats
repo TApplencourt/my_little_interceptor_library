@@ -14,13 +14,13 @@ setup_file() {
 
 @test "Main dlopening | Tracer tracing himself" {
   make main_dlopening
-  TRACED_LIB=../libtracer_dlopened.so run -1 ./main_dlopening ../libtracer_dlopened.so
+  REAL_LIB=../libtracer_dlopened.so run -1 ./main_dlopening ../libtracer_dlopened.so
   
   assert_output "Loading: ../libtracer_dlopened.so
-  [libTracer] dlopen of ../libtracer_dlopened.so succeeded
-  [Main] Calling A
-  [libTracer] Intercepted A
-  [libTracer] Finding Symbol A
-  [libTracer] FATAL: Symbol 'A' resolved inside the Tracer"
+  [libTracer] Initializing tracer (via ctor)
+  [libTracer] Resolving symbol 'A'
+  [libTracer] dlopen(RTLD_LOCAL) of '../libtracer_dlopened.so' succeeded
+  [libTracer] Symbol 'A' found via dlsym
+  [libTracer] Fatal: Symbol 'A' resolved inside the Tracer"
 }
 

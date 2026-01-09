@@ -16,12 +16,16 @@ setup_file() {
   run ./main_dlopening ../libtracer_dlopened.so
 
   assert_output "Loading: ../libtracer_dlopened.so
+  [libTracer] Initializing tracer (via ctor)
+  [libTracer] Resolving symbol 'A'
   [libA] ctor
   [libA] Executing A
-  [libTracer] dlopen of liba.so succeeded
+  [libTracer] dlopen(RTLD_LOCAL) of 'liba.so' succeeded
+  [libTracer] Symbol 'A' found via dlsym
+  [libTracer] Resolving symbol 'B'
+  [libTracer] Symbol 'B' found via dlsym
   [Main] Calling A
   [libTracer] Intercepted A
-  [libTracer] Finding Symbol A
   [libA] Executing A
   [libA] dtor
   [libA] Executing A"
@@ -31,11 +35,18 @@ setup_file() {
   make main_dlopening
   LD_PRELOAD=../libtracer_dlopened.so run ./main_dlopening ../libtracer_dlopened.so
 
-  assert_output "  [libA] ctor
+  assert_output "  [libTracer] Initializing tracer (via ctor)
+  [libTracer] Resolving symbol 'A'
+  [libA] ctor
   [libTracer] Intercepted A
-  [libTracer] Finding Symbol A
+  [libTracer] Resolving symbol 'A'
+  [libTracer] dlopen(RTLD_NOLOAD) of 'liba.so' succeeded
+  [libTracer] Symbol 'A' found via dlsym
   [libA] Executing A
-  [libTracer] dlopen of liba.so succeeded
+  [libTracer] dlopen(RTLD_LOCAL) of 'liba.so' succeeded
+  [libTracer] Symbol 'A' found via dlsym
+  [libTracer] Resolving symbol 'B'
+  [libTracer] Symbol 'B' found via dlsym
 Loading: ../libtracer_dlopened.so
   [Main] Calling A
   [libTracer] Intercepted A
@@ -48,14 +59,17 @@ Loading: ../libtracer_dlopened.so
 
 @test "Main dlopening | Tracer linked" {
   make main_dlopening
-  TRACED_LIB=x run ./main_dlopening ../libtracer_linked.so
+  run ./main_dlopening ../libtracer_linked.so
 
   assert_output "Loading: ../libtracer_linked.so
   [libA] ctor
   [libTracer] Intercepted A
-  [libTracer] Finding Symbol A
+  [libTracer] Resolving symbol 'A'
+  [libTracer] Symbol 'A' found via RTLD_NEXT
   [libA] Executing A
-  [libTracer] dlopen failed: x: cannot open shared object file: No such file or directory
+  [libTracer] Initializing tracer (via ctor)
+  [libTracer] Resolving symbol 'B'
+  [libTracer] Symbol 'B' found via RTLD_NEXT
   [Main] Calling A
   [libTracer] Intercepted A
   [libA] Executing A

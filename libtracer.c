@@ -1,107 +1,129 @@
 #define _GNU_SOURCE
+#include <assert.h>
 #include <dlfcn.h>
+#include <link.h>
 #include <pthread.h>
+#include <stdatomic.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-// Define a function pointer type for readability
+#ifndef VERBOSE_LEVEL
+#define VERBOSE_LEVEL 0
+#endif
+
 typedef void (*func_t)(void);
+static void *_Atomic real_handle = NULL;
 
-static void *manual_liba_handle = NULL;
-static pthread_once_t manual_liba_once = PTHREAD_ONCE_INIT;
+// Resolve and cache the real implementation of a wrapped function
+// - func_name: symbol name to resolve
+// - wrapper_addr: address of our wrapper (used for recursion detection)
+// - cache_ptr: where to store the resolved function pointer
+// - from_ctor: true if called from constructor (happy path)
+static void resolve(const char *func_name, const void *wrapper_addr,
+                    func_t *cache_ptr, bool from_ctor) {
 
-static const char *get_library_name() {
-  const char *value = getenv("TRACED_LIB");
-  if (value != NULL) {
-    return value;
-  } else {
-    return "liba.so";
+  printf("  [libTracer] Resolving symbol '%s'\n", func_name);
+
+  // Strategy 1: Try RTLD_NEXT (works if LD_PRELOAD or patchelf succeeded)
+  func_t real_func = (func_t)dlsym(RTLD_NEXT, func_name);
+  if (real_func) {
+    printf("  [libTracer] Symbol '%s' found via RTLD_NEXT\n", func_name);
+    *cache_ptr = real_func;
+    return;
   }
-}
 
-static void load_manual_liba(void) {
+  // Strategy 2: Manual dlopen fallback
 
-  const char *libname = get_library_name();
+  // 2.1 Obtain handle to the real library
+  if (!real_handle) {
+    char *libname = getenv("REAL_LIB");
+    if (!libname)
+      libname = "liba.so";
 
-  manual_liba_handle = dlopen(libname, RTLD_LAZY | RTLD_LOCAL);
-  if (!manual_liba_handle) {
-    printf("  [libTracer] dlopen failed: %s\n", dlerror());
-  } else {
-    printf("  [libTracer] dlopen of %s succeeded\n", libname);
-  }
-}
+    if (from_ctor) {
+      // We're in our constructor: must actually load the library
+      real_handle = dlopen(libname, RTLD_LAZY | RTLD_LOCAL);
 
-static void resolve(const char *func_name, void *current_wrapper_addr,
-                    func_t *cache_ptr) {
-
-  printf("  [libTracer] Finding Symbol %s\n", func_name);
-
-  // 1. Try RTLD_NEXT (Works if patchelf worked)
-  func_t next_func = (func_t)dlsym(RTLD_NEXT, func_name);
-
-  // 2. Fallback: Check the manual handle
-  if (!next_func) {
-    // If the handle is NULL, we might be inside the recursion gap (inside the
-    // dlopen constructor). We try to grab the handle using RTLD_NOLOAD.
-    if (!manual_liba_handle) {
-      const char *libname = get_library_name();
-      // RTLD_NOLOAD: Get handle if it is already resident, but don't load it if
-      // not. This works even if dlopen hasn't returned to the caller yet!
-      void *temp_handle = dlopen(libname, RTLD_LAZY | RTLD_NOLOAD);
-      if (temp_handle) {
-        next_func = (func_t)dlsym(temp_handle, func_name);
-        // Note: We don't save temp_handle to manual_liba_handle here to avoid
-        // race conditions with the main thread logic, we just use it for this
-        // resolution.
-        dlclose(temp_handle); // decrement refcount incremented by NOLOAD
-      }
+      printf("  [libTracer] dlopen(RTLD_LOCAL) of '%s' succeeded\n", libname);
     } else {
-      next_func = (func_t)dlsym(manual_liba_handle, func_name);
+      // We're in a wrapper: library should already be loaded.
+      // If we aren't (like we are in the real constructor),
+      // RTLD_NOLOAD ensures we will get am handle
+      real_handle = dlopen(libname, RTLD_LAZY | RTLD_NOLOAD);
+      printf("  [libTracer] dlopen(RTLD_NOLOAD) of '%s' succeeded\n", libname);
     }
   }
 
-  // 3.  Abort safely instead of stack overflowing
-  Dl_info my_info, next_info;
+  assert(real_handle && "Failed to obtain handle to real library");
+
+  // 2.2 Look up symbol in the real library
+  real_func = (func_t)dlsym(real_handle, func_name);
+  if (!real_func) {
+    if (from_ctor) {
+#if VERBOSE_LEVEL > 0
+      printf("  [libTracer] Warning: Symbol '%s' not found\n", func_name);
+      printf("  [libTracer] Will crash if called\n");
+#endif
+      return;
+    }
+    fprintf(stderr, "  [libTracer] FATAL: Symbol '%s' not found\n", func_name);
+    exit(1);
+  }
+  printf("  [libTracer] Symbol '%s' found via dlsym\n", func_name);
+
+  // 3. Avoid Infinit recursion when called
+  Dl_info my_info, real_info;
   if (dladdr((void *)resolve, &my_info) &&
-      dladdr((void *)next_func, &next_info)) {
-    if (my_info.dli_fbase == next_info.dli_fbase) {
-      printf("  [libTracer] FATAL: Symbol '%s' resolved inside the Tracer\n",
+      dladdr((void *)real_func, &real_info)) {
+    if (my_info.dli_fbase == real_info.dli_fbase) {
+      printf("  [libTracer] Fatal: Symbol '%s' resolved inside the Tracer\n",
              func_name);
       exit(1);
     }
   }
-
-  // 4. Store
-  if (next_func) {
-    *cache_ptr = next_func;
-  } else {
-    printf("  [libTracer] FATAL: Symbol '%s' not found in traced lib\n",
-           func_name);
-    exit(1);
-  }
+  // 4. Cache the resolved function
+  *cache_ptr = real_func;
 }
+
+// To be faster, no thread safety.
+// In the happy case, our constructor will set the cache.
+// In the pathological case, when the real lib contructor call some symbol AND
+// are multithreaded, they will jut do extra work
+static func_t real_A = NULL;
+static func_t real_B = NULL;
+
+// Forward declarations of our wrappers
+void A(void);
+void B(void);
 
 __attribute__((constructor)) static void init_tracer(void) {
-  pthread_once(&manual_liba_once, load_manual_liba);
+  printf("  [libTracer] Initializing tracer (via ctor)\n");
+
+  // Pre-resolve symbols during initialization
+  // to reduce runtime overhead and solve thread-safety
+  if (__builtin_expect(!real_A, 0))
+    resolve("A", (void *)A, &real_A, true);
+
+  if (__builtin_expect(!real_B, 0))
+    resolve("B", (void *)B, &real_B, true);
 }
 
-__attribute__((destructor)) static void cleanup(void) {
-  if (manual_liba_handle) {
-    dlclose(manual_liba_handle);
-    manual_liba_handle = NULL;
+__attribute__((destructor)) static void cleanup_tracer(void) {
+  if (real_handle) {
+    dlclose(real_handle);
+    real_handle = NULL;
   }
 }
 
 #define DEFINE_WRAPPER(NAME)                                                   \
   void NAME(void) {                                                            \
-    printf("  [libTracer] Intercepted %s\n", #NAME);                           \
-    static func_t cached = NULL;                                               \
-    if (!cached)                                                               \
-      resolve(#NAME, (void *)NAME, &cached);                                   \
-    cached();                                                                  \
+    printf("  [libTracer] Intercepted " #NAME "\n");                           \
+    /* Lazy resolve if constructor didn't run or failed */                     \
+    if (__builtin_expect(!real_##NAME, 1))                                     \
+      resolve(#NAME, (void *)NAME, &real_##NAME, false);                       \
+    real_##NAME();                                                             \
   }
 
 DEFINE_WRAPPER(A)
-DEFINE_WRAPPER(A2)
 DEFINE_WRAPPER(B)
-// No A1, A1 is not exported
