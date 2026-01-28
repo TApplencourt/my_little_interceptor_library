@@ -38,10 +38,6 @@ setup_file() {
   assert_output "  [libTracer] Initializing tracer (via ctor)
   [libTracer] Resolving symbol 'A'
   [libA] ctor
-  [libTracer] Intercepted A
-  [libTracer] Resolving symbol 'A'
-  [libTracer] dlopen(RTLD_NOLOAD) of 'liba.so' succeeded
-  [libTracer] Symbol 'A' found via dlsym
   [libA] Executing A
   [libTracer] dlopen(RTLD_LOCAL) of 'liba.so' succeeded
   [libTracer] Symbol 'A' found via dlsym
@@ -52,7 +48,6 @@ Loading: ../libtracer_dlopened.so
   [libTracer] Intercepted A
   [libA] Executing A
   [libA] dtor
-  [libTracer] Intercepted A
   [libA] Executing A"
 }
 

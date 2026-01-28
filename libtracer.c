@@ -15,17 +15,12 @@
 typedef void (*func_t)(void);
 static void *_Atomic real_handle = NULL;
 
-// Resolve and cache the real implementation of a wrapped function
-// - func_name: symbol name to resolve
-// - wrapper_addr: address of our wrapper (used for recursion detection)
-// - cache_ptr: where to store the resolved function pointer
-// - from_ctor: true if called from constructor (happy path)
 static void resolve(const char *func_name, const void *wrapper_addr,
                     func_t *cache_ptr, bool from_ctor) {
 
   printf("  [libTracer] Resolving symbol '%s'\n", func_name);
 
-  // Strategy 1: Try RTLD_NEXT (works if LD_PRELOAD or patchelf succeeded)
+  // Strategy 1: Try RTLD_NEXT (works if we are LD_PRELOADed or we are linked we the tracee lib)
   func_t real_func = (func_t)dlsym(RTLD_NEXT, func_name);
   if (real_func) {
     printf("  [libTracer] Symbol '%s' found via RTLD_NEXT\n", func_name);
@@ -43,13 +38,13 @@ static void resolve(const char *func_name, const void *wrapper_addr,
 
     if (from_ctor) {
       // We're in our constructor: must actually load the library
-      real_handle = dlopen(libname, RTLD_LAZY | RTLD_LOCAL);
+      real_handle = dlopen(libname, RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
 
       printf("  [libTracer] dlopen(RTLD_LOCAL) of '%s' succeeded\n", libname);
     } else {
       // We're in a wrapper: library should already be loaded.
       // If we aren't (like we are in the real constructor),
-      // RTLD_NOLOAD ensures we will get am handle
+      // RTLD_NOLOAD ensures we will get an handle
       real_handle = dlopen(libname, RTLD_LAZY | RTLD_NOLOAD);
       printf("  [libTracer] dlopen(RTLD_NOLOAD) of '%s' succeeded\n", libname);
     }
@@ -111,6 +106,7 @@ __attribute__((constructor)) static void init_tracer(void) {
 
 __attribute__((destructor)) static void cleanup_tracer(void) {
   if (real_handle) {
+    //printf("  [libTracer] dlclose (via dtor)\n");
     dlclose(real_handle);
     real_handle = NULL;
   }
