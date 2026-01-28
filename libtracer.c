@@ -101,7 +101,7 @@ __attribute__((constructor)) static void init_tracer(void) {
   printf("  [libTracer] Initializing tracer (via ctor)\n");
 
   // Pre-resolve symbols during initialization
-  // to reduce runtime overhead and solve thread-safety
+  // to reduce runtime overhead and "solve" thread-safety
   if (__builtin_expect(!real_A, 0))
     resolve("A", (void *)A, &real_A, true);
 
