@@ -39,7 +39,6 @@ static void resolve(const char *func_name, const void *wrapper_addr,
     if (from_ctor) {
       // We're in our constructor: must actually load the library
       real_handle = dlopen(libname, RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
-
       printf("  [libTracer] dlopen(RTLD_LOCAL) of '%s' succeeded\n", libname);
     } else {
       // We're in a wrapper: library should already be loaded.
@@ -47,6 +46,7 @@ static void resolve(const char *func_name, const void *wrapper_addr,
       // RTLD_NOLOAD ensures we will get an handle
       real_handle = dlopen(libname, RTLD_LAZY | RTLD_NOLOAD);
       printf("  [libTracer] dlopen(RTLD_NOLOAD) of '%s' succeeded\n", libname);
+      exit(1);
     }
   }
 
@@ -92,15 +92,19 @@ static func_t real_B = NULL;
 void A(void);
 void B(void);
 
+#define likely(x)   __builtin_expect(!!(x), 1)
+#define unlikely(x) __builtin_expect(!!(x), 0)
+
+
 __attribute__((constructor)) static void init_tracer(void) {
   printf("  [libTracer] Initializing tracer (via ctor)\n");
 
   // Pre-resolve symbols during initialization
   // to reduce runtime overhead and "solve" thread-safety
-  if (__builtin_expect(!real_A, 0))
+  if (likely(real_A == NULL))
     resolve("A", (void *)A, &real_A, true);
 
-  if (__builtin_expect(!real_B, 0))
+  if (likely(real_B == NULL))
     resolve("B", (void *)B, &real_B, true);
 }
 
@@ -116,7 +120,8 @@ __attribute__((destructor)) static void cleanup_tracer(void) {
   void NAME(void) {                                                            \
     printf("  [libTracer] Intercepted " #NAME "\n");                           \
     /* Lazy resolve if constructor didn't run or failed */                     \
-    if (__builtin_expect(!real_##NAME, 1))                                     \
+    /* We will not take the branch most of the time*/                          \
+    if (unlikely(real_##NAME == NULL))                                         \
       resolve(#NAME, (void *)NAME, &real_##NAME, false);                       \
     real_##NAME();                                                             \
   }
