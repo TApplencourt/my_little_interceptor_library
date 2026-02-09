@@ -1,0 +1,32 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Checkout bats-core
+      uses: actions/checkout@v4
+      with:
+        repository: bats-core/bats-core
+        path: bats-core
+    
+    - name: Install bats
+      run: |
+        cd bats-core
+        sudo ./install.sh /usr/local
+ 
+    - name: Run make
+      run: make
+    
+    - name: Run bats tests
+      run: bats test_*
+
