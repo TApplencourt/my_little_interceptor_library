@@ -9,7 +9,7 @@ liba.so: liba.c
 	$(CC) $(CFLAGS) -fPIC -shared -o $@ $<
 
 main_linked: main_linked.c liba.so
-	$(CC) $(CFLAGS) -o $@ liba.so main_linked.c
+	$(CC) $(CFLAGS) -o $@ main_linked.c liba.so
 
 main_dlopening: main_dlopening.c
 	$(CC) $(CFLAGS) -o $@ $< -ldl
