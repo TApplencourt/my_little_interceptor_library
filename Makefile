@@ -21,3 +21,5 @@ libtracer_dlopened.so: libtracer.c
 
 clean:
 	rm -f $(ALL)
+	@for dir in test_*/; do [ -d "$$dir" ] && $(MAKE) -C "$$dir" clean || true; done
+

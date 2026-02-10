@@ -46,7 +46,6 @@ static void resolve(const char *func_name, const void *wrapper_addr,
       // RTLD_NOLOAD ensures we will get an handle
       real_handle = dlopen(libname, RTLD_LAZY | RTLD_NOLOAD);
       printf("  [libTracer] dlopen(RTLD_NOLOAD) of '%s' succeeded\n", libname);
-      exit(1);
     }
   }
 
