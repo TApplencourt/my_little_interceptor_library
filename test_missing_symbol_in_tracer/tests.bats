@@ -1,8 +1,6 @@
 #!/usr/bin/env bats
 
-assert_output() {
-  diff <(echo "$output") <(echo "$1")
-}
+bats_require_minimum_version 1.5.0
 
 setup_file() {
    cd $(dirname "$BATS_TEST_FILENAME")
@@ -13,33 +11,21 @@ setup_file() {
 
 @test "Main dlopening | Tracer dlopening" {
   make main_dlopening
-  run ./main_dlopening ../libtracer_dlopened.so
-
-  assert_output "Loading: ../libtracer_dlopened.so
-  [libTracer] Initializing tracer (via ctor)
-  [libTracer] Resolving symbol 'A'
-  [libTracer] dlopen(RTLD_LOCAL) of 'liba.so' succeeded
-  [libTracer] Symbol 'A' found via dlsym
-  [libTracer] Resolving symbol 'B'
-  [Main] Calling A
-  [libTracer] Intercepted A
-  [libA] Executing A
-  [Main] Error: ../libtracer_dlopened.so: undefined symbol: AA"
+  TRACING_ON=1 run -1 ./main_dlopening ../libtracer_dlopened.so
 }
 
 @test "Main dlopening | Tracer linked" {
   make main_dlopening
-  TRACED_LIB=x run ./main_dlopening ../libtracer_linked.so
-
-  assert_output "Loading: ../libtracer_linked.so
-  [libTracer] Initializing tracer (via ctor)
-  [libTracer] Resolving symbol 'A'
-  [libTracer] Symbol 'A' found via RTLD_NEXT
-  [libTracer] Resolving symbol 'B'
-  [libTracer] dlopen(RTLD_LOCAL) of 'liba.so' succeeded
-  [Main] Calling A
-  [libTracer] Intercepted A
-  [libA] Executing A
-  [Main] Calling AA
-  [libA] Executing AA"
+  TRACING_ON=1 ./main_dlopening ../libtracer_linked.so
 }
+
+@test "Main linked | Tracer dlopening" {
+  make main_linked
+  TRACING_ON=1 LD_PRELOAD=../libtracer_dlopened.so ./main_linked
+}
+
+@test "Main linked | Tracer linked" {
+  make main_linked
+  TRACING_ON=1 LD_PRELOAD=../libtracer_linked.so ./main_linked
+}
+

@@ -1,23 +1,12 @@
 #include <dlfcn.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-typedef void (*simple_func)(void);
+#include <utils/utils.h>
 
 // This symbol would shadow liba's internal_secret WITHOUT RTLD_DEEPBIND
 void internal_secret(void) {
     fprintf(stderr, "  [main] FATAL: internal_secret called! Shadowing occurred.\n");
     exit(1);
-}
-
-void call_symbol(void *handle, const char *name) {
-    simple_func func = (simple_func)dlsym(handle, name);
-    if (func != NULL) {
-        printf("  [Main] Calling %s\n", name);
-        func();
-    } else {
-        printf("  [Main] Error: %s\n", dlerror());
-    }
 }
 
 int main(int argc, char *argv[]) {

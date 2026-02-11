@@ -2,19 +2,7 @@
 #include <dlfcn.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-typedef void (*simple_func)(void);
-
-void call_symbol(void *handle, const char *name) {
-  simple_func func = (simple_func)dlsym(handle, name);
-  if (func != NULL) {
-    printf("  [ProgramC] Calling %s\n", name);
-    func();
-  } else {
-    char *error = dlerror();
-    printf("  [ProgramC] Error: %s\n", error);
-  }
-}
+#include <utils/utils.h>
 
 int main(int argc, char *argv[]) {
 

@@ -2,15 +2,12 @@ CC=gcc
 CFLAGS=-fPIC -Wall
 
 PATCHELF=patchelf
-ALL=liba.so libtracer_linked.so libtracer_dlopened.so
+ALL= libtracer_linked.so libtracer_dlopened.so
 
 all: $(ALL)
 
-liba.so: liba.c
-	$(CC) $(CFLAGS) -shared -o liba.so liba.c
-
 # VERSION 1: Patched
-libtracer_linked.so: libtracer.c liba.so
+libtracer_linked.so: libtracer.c
 	$(CC) $(CFLAGS) -shared -lpthread -ldl -o libtracer_linked.so libtracer.c
 	@echo "Adding liba.so dependency to libtracer.so via patchelf..."
 	$(PATCHELF) --add-needed liba.so libtracer_linked.so
@@ -21,5 +18,5 @@ libtracer_dlopened.so: libtracer.c
 
 clean:
 	rm -f $(ALL)
-	@for dir in test_*/; do [ -d "$$dir" ] && $(MAKE) -C "$$dir" clean || true; done
+	@for dir in utils/ test_*/; do [ -d "$$dir" ] && $(MAKE) -C "$$dir" clean || true; done
 

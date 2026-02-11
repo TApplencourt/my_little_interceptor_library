@@ -1,5 +1,5 @@
-CC ?= gcc
-CFLAGS ?= -g -Wall -Wpedantic  -I ../
+CC ?=gcc
+CFLAGS ?= -g -Wall -Wpedantic -I../
 
 .PHONY: all clean
 
@@ -8,8 +8,8 @@ all: liba.so main_dlopening
 liba.so: liba.c
 	$(CC) $(CFLAGS) -fPIC -shared -o $@ $<
 
-main_dlopening: main_dlopening.c ../utils/utils.c
+main_dlopening: main_dlopening.c utils.c
 	$(CC) $(CFLAGS) -o $@ $^ -ldl
 
 clean:
-	rm -f liba.so main_dlopening
+	rm -f liba.so main_dlopening 

@@ -16,12 +16,12 @@ typedef void (*func_t)(void);
 static void *_Atomic real_handle = NULL;
 
 static void resolve(const char *func_name, const void *wrapper_addr,
-                    func_t *cache_ptr, bool from_ctor) {
+                    void **cache_ptr, bool from_ctor) {
 
   printf("  [libTracer] Resolving symbol '%s'\n", func_name);
 
   // Strategy 1: Try RTLD_NEXT (works if we are LD_PRELOADed or we are linked we the tracee lib)
-  func_t real_func = (func_t)dlsym(RTLD_NEXT, func_name);
+  void *real_func = dlsym(RTLD_NEXT, func_name);
   if (real_func) {
     printf("  [libTracer] Symbol '%s' found via RTLD_NEXT\n", func_name);
     *cache_ptr = real_func;
@@ -38,21 +38,22 @@ static void resolve(const char *func_name, const void *wrapper_addr,
 
     if (from_ctor) {
       // We're in our constructor: must actually load the library
+      printf("  [libTracer] dlopen(RTLD_LOCAL) of '%s'...\n", libname);
       real_handle = dlopen(libname, RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
-      printf("  [libTracer] dlopen(RTLD_LOCAL) of '%s' succeeded\n", libname);
     } else {
       // We're in a wrapper: library should already be loaded.
       // If we aren't (like we are in the real constructor),
       // RTLD_NOLOAD ensures we will get an handle
+      printf("  [libTracer] dlopen(RTLD_NOLOAD) '%s'...\n", libname);
       real_handle = dlopen(libname, RTLD_LAZY | RTLD_NOLOAD);
-      printf("  [libTracer] dlopen(RTLD_NOLOAD) of '%s' succeeded\n", libname);
     }
   }
 
   assert(real_handle && "Failed to obtain handle to real library");
+  printf("  [libTracer] dlopen(RTLD_LOCAL)  succeeded\n");
 
   // 2.2 Look up symbol in the real library
-  real_func = (func_t)dlsym(real_handle, func_name);
+  real_func = dlsym(real_handle, func_name);
   if (!real_func) {
     if (from_ctor) {
 #if VERBOSE_LEVEL > 0
@@ -73,7 +74,7 @@ static void resolve(const char *func_name, const void *wrapper_addr,
     if (my_info.dli_fbase == real_info.dli_fbase) {
       printf("  [libTracer] Fatal: Symbol '%s' resolved inside the Tracer\n",
              func_name);
-      exit(1);
+      exit(2);
     }
   }
   // 4. Cache the resolved function
@@ -84,12 +85,12 @@ static void resolve(const char *func_name, const void *wrapper_addr,
 // In the happy case, our constructor will set the cache.
 // In the pathological case, when the real lib contructor call some symbol AND
 // are multithreaded, they will jut do extra work
-static func_t real_A = NULL;
-static func_t real_B = NULL;
+static void* real_casted_A = NULL;
+static void* real_casted_B = NULL;
 
 // Forward declarations of our wrappers
-void A(void);
-void B(void);
+bool A(void);
+bool B(void);
 
 #define likely(x)   __builtin_expect(!!(x), 1)
 #define unlikely(x) __builtin_expect(!!(x), 0)
@@ -100,11 +101,11 @@ __attribute__((constructor)) static void init_tracer(void) {
 
   // Pre-resolve symbols during initialization
   // to reduce runtime overhead and "solve" thread-safety
-  if (likely(real_A == NULL))
-    resolve("A", (void *)A, &real_A, true);
+  if (likely(real_casted_A == NULL))
+    resolve("A", (void *)A, &real_casted_A, true);
 
-  if (likely(real_B == NULL))
-    resolve("B", (void *)B, &real_B, true);
+  if (likely(real_casted_B == NULL))
+    resolve("B", (void *)B, &real_casted_B, true);
 }
 
 __attribute__((destructor)) static void cleanup_tracer(void) {
@@ -116,14 +117,16 @@ __attribute__((destructor)) static void cleanup_tracer(void) {
 }
 
 #define DEFINE_WRAPPER(NAME)                                                   \
-  void NAME(void) {                                                            \
+   bool NAME(void) {                                                           \
     printf("  [libTracer] Intercepted " #NAME "\n");                           \
     /* Lazy resolve if constructor didn't run or failed */                     \
     /* We will not take the branch most of the time*/                          \
-    if (unlikely(real_##NAME == NULL))                                         \
-      resolve(#NAME, (void *)NAME, &real_##NAME, false);                       \
-    real_##NAME();                                                             \
-  }
+    if (unlikely(real_casted_##NAME == NULL))                                  \
+      resolve(#NAME, (void *)NAME, &real_casted_##NAME, false);                \
+    /* We negate the return value, */                                          \
+    /* this allow us to check externaly if we are intercepted or not */        \
+    return !((typeof(&NAME))real_casted_##NAME)();                             \
+}
 
 DEFINE_WRAPPER(A)
 DEFINE_WRAPPER(B)

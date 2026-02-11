@@ -1,17 +1,12 @@
 #include <stdio.h>
-
-// Declared extern - forces PLT lookup at runtime
-//extern void internal_secret(void);
+#include <stdbool.h>
 
 void internal_secret(void) {
     printf("  [liba] internal_secret called (CORRECT)\n");
 }
 
-void A(void) {
+int A(void) {
     printf("  [liba] A called. invoking internal_secret...\n");
-    internal_secret();  // Goes through PLT -> dynamic resolution
-}
-
-void B(void) {
-    printf("  [liba] B called\n");
+    internal_secret();
+    return true;
 }

@@ -1,15 +1,17 @@
 CC ?= gcc
-CFLAGS ?= -g -Wall
+CFLAGS ?= -g -Wall -Wpedantic  -I ../
 
 .PHONY: all clean
 
-all: liba.so main_dlopening
+all: check/liba.so no_check/liba.so 
 
-liba.so: liba.c
+check/liba.so: liba.c
+	mkdir -p check
+	$(CC) $(CFLAGS) -fPIC -shared -DO_CHECK -o $@ $<
+
+no_check/liba.so: liba.c
+	mkdir -p no_check
 	$(CC) $(CFLAGS) -fPIC -shared -o $@ $<
 
-main_dlopening: main_dlopening.c
-	$(CC) $(CFLAGS) -o $@ $< -ldl
-
 clean:
-	rm -f liba.so main_linked main_dlopening
+	rm -rf check/ no_check/
