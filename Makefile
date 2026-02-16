@@ -1,5 +1,5 @@
 CC ?= gcc
-CFLAGS ?= -fPIC -Wall #-Wpedantic #-Wno-language-extension-token
+CFLAGS ?= -fPIC -Wall -Wpedantic 
 
 PATCHELF=patchelf
 ALL= libtracer_linked.so libtracer_dlopened.so
