@@ -1,7 +1,8 @@
 #pragma once 
 
+#include <stdint.h>
 #include <stdbool.h>
-typedef bool (*liba_func_t)(void);
-bool A(void);
-bool B(void);
+typedef uint64_t (*liba_func_t)(void);
+uint64_t A(void);
+uint64_t B(void);
 

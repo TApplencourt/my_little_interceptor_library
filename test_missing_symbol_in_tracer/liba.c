@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdint.h>
 
-bool A(void) { printf("  [libA] Executing A\n"); return true; }
-bool AA(void) { printf("  [libA] Executing AA\n"); return true; }
+uint64_t A(void) { printf("  [libA] Executing A\n"); return 0; }
+uint64_t AA(void) { printf("  [libA] Executing AA\n"); return 0; }

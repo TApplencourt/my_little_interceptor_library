@@ -1,7 +1,9 @@
 #include <stdio.h>
+#include <stdint.h>
 
 void _secret_A(void) {};
-void A(void) {
+uint64_t A(void) {
   _secret_A();
   printf("  [libA] Executing A\n");
+  return 0;
 }

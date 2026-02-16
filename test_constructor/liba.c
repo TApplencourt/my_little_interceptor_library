@@ -1,9 +1,10 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <utils/utils.h>
+#include <stdint.h>
 
 // Used to check for symbol leak
-int A(void) { printf("  [libA] Executing A\n"); return true; }
+uint64_t A(void) { printf("  [libA] Executing A\n"); return 0; }
 
 // Vicious check for dlopen re-entrance
 __attribute__((constructor)) static void ctor(void) {

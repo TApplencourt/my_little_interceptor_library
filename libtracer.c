@@ -108,9 +108,9 @@ static void* real_casted_B_v1 = NULL;
 static void* real_casted_B_v2 = NULL;
 
 // Forward declarations of our wrappers
-bool A(void);
-bool B_v1(void);
-bool B_v2(void);
+uint64_t A(void);
+uint64_t B_v1(void);
+uint64_t B_v2(void);
 
 #define likely(x)   __builtin_expect(!!(x), 1)
 #define unlikely(x) __builtin_expect(!!(x), 0)
@@ -132,22 +132,22 @@ __attribute__((constructor)) static void init_tracer(void) {
 
 __attribute__((destructor)) static void cleanup_tracer(void) {
   if (real_handle) {
-    //printf("  [libTracer] dlclose (via dtor)\n");
+    printf("  [libTracer] dlclose (via dtor)\n");
     dlclose(real_handle);
     real_handle = NULL;
   }
 }
 
 #define DEFINE_WRAPPER(NAME)                                                   \
-   bool NAME(void) {                                                           \
+   uint64_t NAME(void) {                                                       \
     printf("  [libTracer] Intercepted " #NAME "\n");                           \
     /* Lazy resolve if constructor didn't run or failed */                     \
     /* We will not take the branch most of the time*/                          \
     if (unlikely(real_casted_##NAME == NULL))                                  \
       resolve(#NAME, (void *)NAME, &real_casted_##NAME, false);                \
-    /* We negate the return value, */                                          \
+    /* Set the last bit to 1, */                                               \
     /* this allow us to check externaly if we are intercepted or not */        \
-    return !((typeof(&NAME))real_casted_##NAME)();                             \
+    return ((typeof(&NAME))real_casted_##NAME)() | (1ULL << 63);               \
 }
 
 DEFINE_WRAPPER(A)

@@ -1,9 +1,10 @@
 #include <stdio.h>
 #include <utils/utils.h>
+#include <stdint.h>
 
 // Yeah we don't have any liba header
-extern bool A(void);
-extern bool AA(void);
+extern uint64_t A(void);
+extern uint64_t AA(void);
 
 int main(int argc, char *argv[]) {
   printf("  [Main] Calling A\n");
