@@ -1,6 +1,6 @@
 #include <stdio.h>
-#include <utils/utils.h>
 #include <utils/liba.h>
+#include <utils/utils.h>
 
 int main(int argc, char *argv[]) {
   printf("  [Main] Calling A\n");

@@ -1,5 +1,5 @@
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 
 void _secret_A(void) {};
 uint64_t A(void) {

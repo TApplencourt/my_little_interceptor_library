@@ -1,18 +1,18 @@
-#include <stdbool.h>
 #include <assert.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
 #include <dlfcn.h>
-#include <utils/utils.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <utils/liba.h>
+#include <utils/utils.h>
 
 void call_symbol(void *handle, const char *name) {
 
   union {
-     void *obj;
-     liba_func_t func;
-   } alias;
+    void *obj;
+    liba_func_t func;
+  } alias;
 
   alias.obj = dlsym(handle, name);
   liba_func_t func = alias.func;
@@ -26,12 +26,12 @@ void call_symbol(void *handle, const char *name) {
   }
 }
 
-void call_symbol_check_not_traced(void *handle, const char *name){ 
+void call_symbol_check_not_traced(void *handle, const char *name) {
 
   union {
-     void *obj;
-     liba_func_t func;
-   } alias;
+    void *obj;
+    liba_func_t func;
+  } alias;
 
   alias.obj = dlsym(handle, name);
   liba_func_t func = alias.func;
@@ -44,4 +44,3 @@ void call_symbol_check_not_traced(void *handle, const char *name){
     exit(1);
   }
 }
-

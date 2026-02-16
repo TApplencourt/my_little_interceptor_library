@@ -18,19 +18,20 @@ static void *_Atomic real_handle = NULL;
 static void resolve_versioned(const char *func_name, const char *version,
                               const void *wrapper_addr, void **cache_ptr,
                               bool from_ctor) {
-    printf("  [libTracer] Resolving symbol versioned '%s@%s'\n", func_name, version);
+  printf("  [libTracer] Resolving symbol versioned '%s@%s'\n", func_name,
+         version);
 
-    // Try dlvsym with RTLD_NEXT
-    void *real_func = dlvsym(RTLD_NEXT, func_name, version);
-    if (real_func) {
-        printf("  [libTracer] Symbol '%s@%s' found via RTLD_NEXT\n",
-               func_name, version);
-        *cache_ptr = real_func;
-        return;
-    }
+  // Try dlvsym with RTLD_NEXT
+  void *real_func = dlvsym(RTLD_NEXT, func_name, version);
+  if (real_func) {
+    printf("  [libTracer] Symbol '%s@%s' found via RTLD_NEXT\n", func_name,
+           version);
+    *cache_ptr = real_func;
+    return;
+  }
 
-    // Fallback to manual dlopen with dlvsym
-    // ... rest of your logic using dlvsym instead of dlsym
+  // Fallback to manual dlopen with dlvsym
+  // ... rest of your logic using dlvsym instead of dlsym
 }
 
 static void resolve(const char *func_name, const void *wrapper_addr,
@@ -38,7 +39,8 @@ static void resolve(const char *func_name, const void *wrapper_addr,
 
   printf("  [libTracer] Resolving symbol '%s'\n", func_name);
 
-  // Strategy 1: Try RTLD_NEXT (works if we are LD_PRELOADed or we are linked we the tracee lib)
+  // Strategy 1: Try RTLD_NEXT (works if we are LD_PRELOADed or we are linked we
+  // the tracee lib)
   void *real_func = dlsym(RTLD_NEXT, func_name);
   if (real_func) {
     printf("  [libTracer] Symbol '%s' found via RTLD_NEXT\n", func_name);
@@ -103,16 +105,16 @@ static void resolve(const char *func_name, const void *wrapper_addr,
 // In the happy case, our constructor will set the cache.
 // In the pathological case, when the real lib contructor call some symbol AND
 // are multithreaded, they will jut do extra work
-static void* real_casted_A = NULL;
-static void* real_casted_B_v1 = NULL;
-static void* real_casted_B_v2 = NULL;
+static void *real_casted_A = NULL;
+static void *real_casted_B_v1 = NULL;
+static void *real_casted_B_v2 = NULL;
 
 // Forward declarations of our wrappers
 uint64_t A(void);
 uint64_t B_v1(void);
 uint64_t B_v2(void);
 
-#define likely(x)   __builtin_expect(!!(x), 1)
+#define likely(x) __builtin_expect(!!(x), 1)
 #define unlikely(x) __builtin_expect(!!(x), 0)
 
 __attribute__((constructor)) static void init_tracer(void) {
@@ -127,7 +129,7 @@ __attribute__((constructor)) static void init_tracer(void) {
     resolve_versioned("B", "LIBA_1.0", (void *)B_v1, &real_casted_B_v1, true);
 
   if (likely(real_casted_B_v2 == NULL))
-    resolve_versioned("B","LIBA_2.0", (void *)B_v2, &real_casted_B_v2, true);
+    resolve_versioned("B", "LIBA_2.0", (void *)B_v2, &real_casted_B_v2, true);
 }
 
 __attribute__((destructor)) static void cleanup_tracer(void) {
@@ -139,7 +141,7 @@ __attribute__((destructor)) static void cleanup_tracer(void) {
 }
 
 #define DEFINE_WRAPPER(NAME)                                                   \
-   uint64_t NAME(void) {                                                       \
+  uint64_t NAME(void) {                                                        \
     printf("  [libTracer] Intercepted " #NAME "\n");                           \
     /* Lazy resolve if constructor didn't run or failed */                     \
     /* We will not take the branch most of the time*/                          \
@@ -148,7 +150,7 @@ __attribute__((destructor)) static void cleanup_tracer(void) {
     /* Set the last bit to 1, */                                               \
     /* this allow us to check externaly if we are intercepted or not */        \
     return ((typeof(&NAME))real_casted_##NAME)() | (1ULL << 63);               \
-}
+  }
 
 DEFINE_WRAPPER(A)
 __asm__(".symver B_v1, B@LIBA_1.0");

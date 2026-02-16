@@ -1,6 +1,6 @@
+#include <stdint.h>
 #include <stdio.h>
 #include <utils/utils.h>
-#include <stdint.h>
 
 // Yeah we don't have any liba header
 extern uint64_t A(void);
