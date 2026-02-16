@@ -3,7 +3,7 @@ CFLAGS ?= -g -Wall -Wpedantic  -I ../
 
 .PHONY: all clean
 
-all: main_linked main_dlopening
+all: main_linked
 
 ../utils/liba.so:
 	$(MAKE) -C ../utils liba.so
@@ -12,4 +12,4 @@ main_linked: main_linked.c ../utils/liba.so
 	$(CC) $(CFLAGS) -o $@ $^
 
 clean:
-	rm -f main_linked main_dlopening
+	rm -f main_linked

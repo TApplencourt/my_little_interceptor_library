@@ -13,7 +13,7 @@ setup_file() {
 }
 
 @test "Main dlopening | Tracer linked" {
-  make -C ../utils main_dlopening  
+  make -C ../utils main_dlopening
   TRACING_ON=1 ../utils/main_dlopening ../libtracer_linked.so
 }
 

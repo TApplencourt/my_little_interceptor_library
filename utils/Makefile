@@ -6,7 +6,7 @@ CFLAGS ?= -g -Wall -Wpedantic -I../
 all: liba.so main_dlopening
 
 liba.so: liba.c
-	$(CC) $(CFLAGS) -fPIC -shared -o $@ $<
+	$(CC) $(CFLAGS) -fPIC -shared -Wl,--version-script=liba.map -o $@ $<
 
 main_dlopening: main_dlopening.c utils.c
 	$(CC) $(CFLAGS) -o $@ $^ -ldl
